@@ -189,10 +189,9 @@ try:
         st.markdown("---") # Garis pembatas
         
         # G. FOOTER / KONTAK (Untuk Recruiter)
-        st.markdown("""
-        <div style="text-align: center; padding: 20px;">
+        st.markdown("""<div style="text-align: center; padding: 20px;">
             <h4>Let's Connect! 🤝</h4>
-            <p>Dashboard ini dikembangkan oleh <strong>[Masukkan Nama Anda]</strong></p>
+            <p>Dashboard ini dikembangkan oleh <strong>[Saripudin Sahardi]</strong></p>
             <p style="color: gray; font-size: 14px;">Data Enthusiast | Tangerang Selatan, Indonesia</p>
             
             <div style="margin-top: 15px;">
@@ -211,8 +210,7 @@ try:
                     <img src="https://cdn-icons-png.flaticon.com/512/3214/3214736.png" width="30" alt="Website" title="Kunjungi Portfolio">
                 </a>
             </div>
-        </div>
-        """, unsafe_allow_html=True)
+        </div> """, unsafe_allow_html=True)
             
 except FileNotFoundError:
     st.error("File 'Data_Dummy_Winod_10000_Row.xlsx' tidak ditemukan. Pastikan file berada di folder yang sama dengan app.py.")
