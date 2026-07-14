@@ -201,7 +201,7 @@ try:
 </a>
 <!-- Link LinkedIn -->
 <a href="https://www.linkedin.com/in/saripudin-sahardi-387b74156/" target="_blank" style="text-decoration: none; margin: 0 15px;">
-<img src="https://cdn-icons-png.flaticon.com/512/174/174848.png" width="30" alt="LinkedIn" title="Kunjungi LinkedIn">
+<img src="https://cdn-icons-png.flaticon.com/512/3536/3536505.png" width="30" alt="LinkedIn" title="Kunjungi LinkedIn">
 </a>
 <!-- Link Website/Portfolio -->
 <a href="https://greenbird90.github.io/cvsaripudin/" target="_blank" style="text-decoration: none; margin: 0 15px;">
