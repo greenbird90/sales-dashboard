@@ -188,29 +188,28 @@ try:
         st.markdown("<br><br>", unsafe_allow_html=True) # Memberikan jarak spasi
         st.markdown("---") # Garis pembatas
         
-        # G. FOOTER / KONTAK (Untuk Recruiter)
-        st.markdown("""<div style="text-align: center; padding: 20px;">
-            <h4>Let's Connect! 🤝</h4>
-            <p>Dashboard ini dikembangkan oleh <strong>[Saripudin Sahardi]</strong></p>
-            <p style="color: gray; font-size: 14px;">Data Enthusiast | Tangerang Selatan, Indonesia</p>
-            
-            <div style="margin-top: 15px;">
-                <!-- Link Email -->
-                <a href="mailto:saripudinsahardi@gmail.com" target="_blank" style="text-decoration: none; margin: 0 15px;">
-                    <img src="https://cdn-icons-png.flaticon.com/512/732/732200.png" width="30" alt="Email" title="Kirim Email">
-                </a>
-                
-                <!-- Link LinkedIn -->
-                <a href="https://www.linkedin.com/in/saripudin-sahardi-387b74156/" target="_blank" style="text-decoration: none; margin: 0 15px;">
-                    <img src="https://cdn-icons-png.flaticon.com/512/174/174848.png" width="30" alt="LinkedIn" title="Kunjungi LinkedIn">
-                </a>
-                
-                <!-- Link Website/Portfolio -->
-                <a href="https://greenbird90.github.io/cvsaripudin/" target="_blank" style="text-decoration: none; margin: 0 15px;">
-                    <img src="https://cdn-icons-png.flaticon.com/512/3214/3214736.png" width="30" alt="Website" title="Kunjungi Portfolio">
-                </a>
-            </div>
-        </div> """, unsafe_allow_html=True)
+       # G. FOOTER / KONTAK (Untuk Recruiter)
+        st.markdown("""
+<div style="text-align: center; padding: 20px;">
+<h4>Let's Connect! 🤝</h4>
+<p>Dashboard ini dikembangkan oleh <strong>Saripudin Sahardi</strong></p>
+<p style="color: gray; font-size: 14px;">Data Enthusiast | Tangerang Selatan, Indonesia</p>
+<div style="margin-top: 15px;">
+<!-- Link Email -->
+<a href="mailto:saripudinsahardi@gmail.com" target="_blank" style="text-decoration: none; margin: 0 15px;">
+<img src="https://cdn-icons-png.flaticon.com/512/732/732200.png" width="30" alt="Email" title="Kirim Email">
+</a>
+<!-- Link LinkedIn -->
+<a href="https://www.linkedin.com/in/saripudin-sahardi-387b74156/" target="_blank" style="text-decoration: none; margin: 0 15px;">
+<img src="https://cdn-icons-png.flaticon.com/512/174/174848.png" width="30" alt="LinkedIn" title="Kunjungi LinkedIn">
+</a>
+<!-- Link Website/Portfolio -->
+<a href="https://greenbird90.github.io/cvsaripudin/" target="_blank" style="text-decoration: none; margin: 0 15px;">
+<img src="https://cdn-icons-png.flaticon.com/512/3214/3214736.png" width="30" alt="Website" title="Kunjungi Portfolio">
+</a>
+</div>
+</div>
+        """, unsafe_allow_html=True)
             
 except FileNotFoundError:
     st.error("File 'Data_Dummy_Winod_10000_Row.xlsx' tidak ditemukan. Pastikan file berada di folder yang sama dengan app.py.")
