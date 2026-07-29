@@ -9,11 +9,29 @@ from statsmodels.tsa.holtwinters import ExponentialSmoothing
 st.set_page_config(page_title="Sales Dashboard", page_icon="📈", layout="wide", initial_sidebar_state="expanded")
 
 # 2. Memuat Data & Pre-processing
+# 2. Memuat Data & Pre-processing
 @st.cache_data
 def load_data():
     df = pd.read_excel("Data_Dummy_10000_Row.xlsx")
     df['Date'] = pd.to_datetime(df['Date'])
     df['Bulan-Tahun'] = df['Date'].dt.to_period('M').astype(str)
+    
+    # --- FITUR BARU: DEMOGRAFI GENERASI ---
+    df['Tanggal Lahir'] = pd.to_datetime(df['Tanggal Lahir'])
+    df['Tahun Lahir'] = df['Tanggal Lahir'].dt.year
+    # Menghitung umur berdasarkan tahun transaksi terakhir
+    tahun_sekarang = df['Date'].dt.year.max() 
+    df['Umur'] = tahun_sekarang - df['Tahun Lahir']
+    
+    # Fungsi pengelompokan generasi
+    def get_generation(year):
+        if year >= 2013: return "Gen Alpha"
+        elif year >= 1997: return "Gen Z"
+        elif year >= 1981: return "Millennials"
+        elif year >= 1965: return "Gen X"
+        else: return "Baby Boomers"
+        
+    df['Generasi'] = df['Tahun Lahir'].apply(get_generation)
     return df
 
 try:
@@ -268,6 +286,27 @@ try:
                 st.plotly_chart(fig_basket, use_container_width=True)
             else:
                 st.info("Data belum cukup untuk menemukan pola kombinasi Market Basket.")
+
+            # --- 3. DEMOGRAFI PELANGGAN (GENERASI UMUR) ---
+            st.divider()
+            st.subheader("3. Segmentasi Demografi (Generasi Usia)")
+            st.caption("Menganalisa daya beli dan preferensi produk berdasarkan rentang usia untuk strategi Marketing Campaign.")
+            
+            col_demo1, col_demo2 = st.columns(2)
+            with col_demo1:
+                # Grafik Pendapatan per Generasi (Donut Chart)
+                gen_sales = filtered_df.groupby("Generasi")["Nett Sales"].sum().reset_index()
+                fig_gen = px.pie(gen_sales, names="Generasi", values="Nett Sales", hole=0.4, 
+                                 title="Kontribusi Pendapatan per Generasi",
+                                 color_discrete_sequence=px.colors.qualitative.Pastel)
+                st.plotly_chart(fig_gen, use_container_width=True)
+                
+            with col_demo2:
+                # Grafik Preferensi Produk per Generasi (Bar Chart Berkelompok)
+                gen_prod = filtered_df.groupby(["Generasi", "Nama Barang"])["QTY"].sum().reset_index()
+                fig_gen_prod = px.bar(gen_prod, x="Generasi", y="QTY", color="Nama Barang", 
+                                      title="Preferensi Produk per Generasi", barmode="group")
+                st.plotly_chart(fig_gen_prod, use_container_width=True)
 
         # G. FOOTER / KONTAK
         st.markdown("<br><br>", unsafe_allow_html=True)
