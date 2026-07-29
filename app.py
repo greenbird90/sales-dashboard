@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import statsmodels.api as sm
+from statsmodels.tsa.holtwinters import ExponentialSmoothing
 
 # 1. Konfigurasi Halaman
 st.set_page_config(page_title="Sales Dashboard", page_icon="📈", layout="wide", initial_sidebar_state="expanded")
@@ -47,7 +49,6 @@ try:
         filtered_df = df
 
     # 4. KONTEN UTAMA
-
     st.markdown("""
     <style>
     /* Mengecilkan ukuran font nilai angka pada metrik */
@@ -60,7 +61,6 @@ try:
     }
     </style>
     """, unsafe_allow_html=True)
-    # ------------------------------
 
     st.title("📈 Sales Dashboard - Advance")
     st.markdown("Dashboard interaktif untuk memonitor performa penjualan, wilayah, tren, dan pencapaian tim sales.")
@@ -69,126 +69,185 @@ try:
     if filtered_df.empty:
         st.warning("Tidak ada data yang cocok dengan filter yang dipilih.")
     else:
-        # A. Key Performance Indicators (KPI) Dinamis
-        st.markdown("### 📊 Key Performance Indicators")
-        col1, col2, col3, col4 = st.columns(4)
-        
-        col1.metric("Total Pesanan", f"{len(filtered_df):,}")
-        col2.metric("Total Barang Terjual", f"{filtered_df['QTY'].sum():,}")
-        col3.metric("Total Nett Sales", f"Rp {filtered_df['Nett Sales'].sum():,.0f}")
-        col4.metric("Total Gross Profit", f"Rp {filtered_df['Gross Profit'].sum():,.0f}")
-        
-        st.divider()
+        # MEMBUAT TABS UNTUK MEMISAHKAN DASHBOARD UTAMA & PREDIKSI
+        tab1, tab2 = st.tabs(["📊 Dashboard Utama", "🔮 Prediksi Penjualan"])
 
-        # B. GRAFIK BARIS 1: Tren Penjualan & Produk Terlaris
-        col_trend, col_prod = st.columns([2, 1])
+        # ==========================================
+        # ISI TAB 1: DASHBOARD UTAMA (Grafik & KPI)
+        # ==========================================
+        with tab1:
+            # A. Key Performance Indicators (KPI) Dinamis
+            st.markdown("### 📊 Key Performance Indicators")
+            col1, col2, col3, col4 = st.columns(4)
+            
+            col1.metric("Total Pesanan", f"{len(filtered_df):,}")
+            col2.metric("Total Barang Terjual", f"{filtered_df['QTY'].sum():,}")
+            col3.metric("Total Nett Sales", f"Rp {filtered_df['Nett Sales'].sum():,.0f}")
+            col4.metric("Total Gross Profit", f"Rp {filtered_df['Gross Profit'].sum():,.0f}")
+            
+            st.divider()
 
-        with col_trend:
-            # 1. Cek rentang hari dari filter
-            if len(date_range) == 2 and (date_range[1] - date_range[0]).days <= 60:
-                # Gunakan tren HARIAN jika rentang waktu <= 60 hari
-                trend_data = filtered_df.groupby("Date")["Nett Sales"].sum().reset_index()
-                x_kolom = "Date"
-                judul_grafik = "Tren Penjualan Harian (Nett Sales)"
+            # B. GRAFIK BARIS 1: Tren Penjualan & Produk Terlaris
+            col_trend, col_prod = st.columns([2, 1])
+
+            with col_trend:
+                if len(date_range) == 2 and (date_range[1] - date_range[0]).days <= 60:
+                    trend_data = filtered_df.groupby("Date")["Nett Sales"].sum().reset_index()
+                    x_kolom = "Date"
+                    judul_grafik = "Tren Penjualan Harian (Nett Sales)"
+                else:
+                    trend_data = filtered_df.groupby("Bulan-Tahun")["Nett Sales"].sum().reset_index()
+                    trend_data['Bulan-Tahun'] = pd.to_datetime(trend_data['Bulan-Tahun'])
+                    trend_data = trend_data.sort_values('Bulan-Tahun')
+                    trend_data['Bulan-Tahun'] = trend_data['Bulan-Tahun'].dt.strftime('%Y-%m')
+                    x_kolom = "Bulan-Tahun"
+                    judul_grafik = "Tren Penjualan Bulanan (Nett Sales)"
+                
+                fig_trend = px.line(trend_data, x=x_kolom, y="Nett Sales", markers=True,
+                                    title=judul_grafik, line_shape="spline")
+                fig_trend.update_layout(yaxis_rangemode='tozero')
+                
+                if len(trend_data) == 1:
+                    fig_trend.update_traces(mode='markers', marker=dict(size=10))
+
+                st.plotly_chart(fig_trend, use_container_width=True)
+                
+            with col_prod:
+                top_products = filtered_df.groupby("Nama Barang")["QTY"].sum().nlargest(5).reset_index()
+                fig_prod = px.bar(top_products, x="QTY", y="Nama Barang", orientation='h',
+                                  title="Top 5 Produk Terlaris", color="Nama Barang")
+                fig_prod.update_layout(showlegend=False)
+                st.plotly_chart(fig_prod, use_container_width=True)
+
+            # C. GRAFIK BARIS 2: Performa Salesmen & Distribusi Channel
+            col_sales, col_channel = st.columns([1, 1])
+
+            with col_sales:
+                sales_perf = filtered_df.groupby("Salesmen")[["Nett Sales", "Gross Profit"]].sum().reset_index()
+                sales_perf = sales_perf.sort_values(by="Gross Profit", ascending=False)
+                fig_sales = px.bar(sales_perf, x="Salesmen", y=["Gross Profit", "Nett Sales"], 
+                                   barmode="group", title="Performa Salesmen (Profit vs Sales)")
+                st.plotly_chart(fig_sales, use_container_width=True)
+
+            with col_channel:
+                channel_dist = filtered_df.groupby("Channel")["Nett Sales"].sum().reset_index()
+                fig_channel = px.pie(channel_dist, names="Channel", values="Nett Sales", 
+                                     hole=0.4, title="Kontribusi Channel Penjualan")
+                st.plotly_chart(fig_channel, use_container_width=True)
+                
+            st.divider()
+            
+            # D. GRAFIK BARIS 3: Analisa Wilayah (Lokasi)
+            st.markdown("### 🗺️ Analisa Wilayah Penjualan")
+            col_loc1, col_loc2 = st.columns([2, 1])
+
+            with col_loc1:
+                loc_data = filtered_df.groupby("Lokasi")["Nett Sales"].sum().reset_index()
+                loc_data = loc_data.sort_values(by="Nett Sales", ascending=True) 
+                
+                fig_loc = px.bar(loc_data, x="Nett Sales", y="Lokasi", orientation='h',
+                                 title="Pendapatan Tertinggi Berdasarkan Lokasi",
+                                 color="Nett Sales", color_continuous_scale="Viridis")
+                st.plotly_chart(fig_loc, use_container_width=True)
+
+            with col_loc2:
+                loc_qty = filtered_df.groupby("Lokasi")["QTY"].sum().reset_index()
+                fig_loc_pie = px.pie(loc_qty, names="Lokasi", values="QTY", hole=0.4,
+                                     title="Distribusi Barang Terjual per Lokasi")
+                st.plotly_chart(fig_loc_pie, use_container_width=True)
+
+            st.divider()
+
+            # E. TABEL DATA MENTAH
+            with st.expander("Tampilkan Detail Data Transaksi (Tabel)"):
+                st.dataframe(filtered_df.sort_values(by="Date", ascending=False).head(500))
+
+            # F. FUNGSI UNDUH LAPORAN
+            st.markdown("### 📥 Unduh Laporan")
+            st.caption("Unduh data transaksi yang telah Anda filter di atas ke dalam format CSV.")
+            
+            @st.cache_data
+            def convert_df(df):
+                return df.to_csv(index=False).encode('utf-8')
+
+            csv_data = convert_df(filtered_df)
+            
+            st.download_button(
+                label="Download Data Filtered (CSV)",
+                data=csv_data,
+                file_name='laporan_winod_filtered.csv',
+                mime='text/csv',
+            )
+
+        # ==========================================
+        # ISI TAB 2: PREDIKSI (FORECASTING)
+        # ==========================================
+        with tab2:
+            st.header("🔮 Prediksi Penjualan (30 Hari ke Depan)")
+            st.markdown("Menggunakan algoritma Machine Learning **Holt-Winters (Exponential Smoothing)** untuk memprediksi tren penjualan berdasarkan data historis yang Anda filter.")
+            
+            # Siapkan data time series harian
+            ts_data = filtered_df.groupby('Date')['Nett Sales'].sum().reset_index()
+            
+            # Pastikan minimal ada 30 titik data untuk prediksi yang cukup akurat
+            if len(ts_data) >= 30:
+                try:
+                    ts_data = ts_data.set_index('Date').asfreq('D')
+                    ts_data['Nett Sales'] = ts_data['Nett Sales'].fillna(0) # Isi tanggal kosong dengan 0
+                    
+                    # Fit Model
+                    model = ExponentialSmoothing(ts_data['Nett Sales'], trend='add', seasonal=None, initialization_method="estimated")
+                    fit_model = model.fit()
+                    
+                    # Forecast 30 hari
+                    forecast_steps = 30
+                    forecast = fit_model.forecast(forecast_steps)
+                    
+                    # Siapkan DataFrame gabungan untuk Plot
+                    history_df = ts_data.reset_index()
+                    history_df['Tipe'] = 'Data Historis'
+                    
+                    last_date = history_df['Date'].max()
+                    forecast_dates = pd.date_range(start=last_date + pd.Timedelta(days=1), periods=forecast_steps)
+                    
+                    forecast_df = pd.DataFrame({
+                        'Date': forecast_dates,
+                        'Nett Sales': forecast.values,
+                        'Tipe': 'Prediksi (Forecast)'
+                    })
+                    
+                    combined_df = pd.concat([history_df, forecast_df])
+                    
+                    # Plot Grafik
+                    fig_forecast = px.line(combined_df, x='Date', y='Nett Sales', color='Tipe',
+                                           title="Grafik Historis & Prediksi Penjualan 30 Hari Kedepan",
+                                           color_discrete_map={'Data Historis': '#2E86C1', 'Prediksi (Forecast)': '#E74C3C'})
+                    
+                    fig_forecast.update_layout(xaxis_title="Tanggal", yaxis_title="Total Penjualan (Rp)")
+                    fig_forecast.add_vline(x=last_date, line_dash="dash", line_color="gray", annotation_text="Mulai Prediksi")
+                    
+                    st.plotly_chart(fig_forecast, use_container_width=True)
+                    
+                    # Ringkasan Angka Prediksi
+                    st.subheader("💡 Ringkasan Prediksi Bulan Depan")
+                    col_f1, col_f2, col_f3 = st.columns(3)
+                    with col_f1:
+                        st.metric("Total Prediksi Penjualan", f"Rp {forecast.sum():,.0f}")
+                    with col_f2:
+                        st.metric("Rata-rata Harian (Prediksi)", f"Rp {forecast.mean():,.0f}")
+                    with col_f3:
+                        tren_status = "Naik 📈" if forecast.iloc[-1] > forecast.iloc[0] else "Turun 📉"
+                        st.metric("Tren 30 Hari Kedepan", tren_status)
+                        
+                except Exception as e:
+                    st.error(f"⚠️ Gagal melakukan prediksi. Detail error: {e}")
             else:
-                # Gunakan tren BULANAN jika lebih dari 60 hari
-                trend_data = filtered_df.groupby("Bulan-Tahun")["Nett Sales"].sum().reset_index()
-                trend_data['Bulan-Tahun'] = pd.to_datetime(trend_data['Bulan-Tahun'])
-                trend_data = trend_data.sort_values('Bulan-Tahun')
-                trend_data['Bulan-Tahun'] = trend_data['Bulan-Tahun'].dt.strftime('%Y-%m')
-                x_kolom = "Bulan-Tahun"
-                judul_grafik = "Tren Penjualan Bulanan (Nett Sales)"
-            
-            # 2. Buat grafik
-            fig_trend = px.line(trend_data, x=x_kolom, y="Nett Sales", markers=True,
-                                title=judul_grafik,
-                                line_shape="spline")
-            
-            # 3. Perbaiki skala Y agar selalu mulai dari 0 (mencegah zoom aneh)
-            fig_trend.update_layout(yaxis_rangemode='tozero')
-            
-            # 4. Jika datanya kebetulan cuma 1 titik (misal difilter cuma 1 hari)
-            if len(trend_data) == 1:
-                fig_trend.update_traces(mode='markers', marker=dict(size=10))
+                st.warning("⚠️ Data historis yang dipilih kurang dari 30 hari. Silakan perlebar rentang waktu pada sidebar untuk menggunakan fitur prediksi.")
 
-            st.plotly_chart(fig_trend, use_container_width=True)
-        with col_prod:
-            # Grafik Produk Terlaris (Berdasarkan QTY)
-            top_products = filtered_df.groupby("Nama Barang")["QTY"].sum().nlargest(5).reset_index()
-            fig_prod = px.bar(top_products, x="QTY", y="Nama Barang", orientation='h',
-                              title="Top 5 Produk Terlaris", color="Nama Barang")
-            fig_prod.update_layout(showlegend=False)
-            st.plotly_chart(fig_prod, use_container_width=True)
-
-        # C. GRAFIK BARIS 2: Performa Salesmen & Distribusi Channel
-        col_sales, col_channel = st.columns([1, 1])
-
-        with col_sales:
-            # Performa Salesmen (Berdasarkan Profit)
-            sales_perf = filtered_df.groupby("Salesmen")[["Nett Sales", "Gross Profit"]].sum().reset_index()
-            sales_perf = sales_perf.sort_values(by="Gross Profit", ascending=False)
-            fig_sales = px.bar(sales_perf, x="Salesmen", y=["Gross Profit", "Nett Sales"], 
-                               barmode="group", title="Performa Salesmen (Profit vs Sales)")
-            st.plotly_chart(fig_sales, use_container_width=True)
-
-        with col_channel:
-            # Distribusi Channel
-            channel_dist = filtered_df.groupby("Channel")["Nett Sales"].sum().reset_index()
-            fig_channel = px.pie(channel_dist, names="Channel", values="Nett Sales", 
-                                 hole=0.4, title="Kontribusi Channel Penjualan")
-            st.plotly_chart(fig_channel, use_container_width=True)
-            
-        st.divider()
+        # G. FOOTER / KONTAK (Akan selalu muncul di bawah tabs)
+        st.markdown("<br><br>", unsafe_allow_html=True)
+        st.markdown("---") 
         
-        # D. GRAFIK BARIS 3: Analisa Wilayah (Lokasi)
-        st.markdown("### 🗺️ Analisa Wilayah Penjualan")
-        col_loc1, col_loc2 = st.columns([2, 1])
-
-        with col_loc1:
-            # Grafik Pendapatan Berdasarkan Lokasi (Bar Chart Horizontal)
-            loc_data = filtered_df.groupby("Lokasi")["Nett Sales"].sum().reset_index()
-            loc_data = loc_data.sort_values(by="Nett Sales", ascending=True) 
-            
-            fig_loc = px.bar(loc_data, x="Nett Sales", y="Lokasi", orientation='h',
-                             title="Pendapatan Tertinggi Berdasarkan Lokasi",
-                             color="Nett Sales", color_continuous_scale="Viridis")
-            st.plotly_chart(fig_loc, use_container_width=True)
-
-        with col_loc2:
-            # Proporsi Lokasi berdasarkan QTY Barang Terjual (Donut Chart)
-            loc_qty = filtered_df.groupby("Lokasi")["QTY"].sum().reset_index()
-            fig_loc_pie = px.pie(loc_qty, names="Lokasi", values="QTY", hole=0.4,
-                                 title="Distribusi Barang Terjual per Lokasi")
-            st.plotly_chart(fig_loc_pie, use_container_width=True)
-
-        st.divider()
-
-        # E. TABEL DATA MENTAH
-        with st.expander("Tampilkan Detail Data Transaksi (Tabel)"):
-            st.dataframe(filtered_df.sort_values(by="Date", ascending=False).head(500))
-
-        # F. FUNGSI UNDUH LAPORAN
-        st.markdown("### 📥 Unduh Laporan")
-        st.caption("Unduh data transaksi yang telah Anda filter di atas ke dalam format CSV.")
-        
-        @st.cache_data
-        def convert_df(df):
-            # Mengubah dataframe menjadi format CSV
-            return df.to_csv(index=False).encode('utf-8')
-
-        csv_data = convert_df(filtered_df)
-        
-        st.download_button(
-            label="Download Data Filtered (CSV)",
-            data=csv_data,
-            file_name='laporan_winod_filtered.csv',
-            mime='text/csv',
-        )
-
-        st.markdown("<br><br>", unsafe_allow_html=True) # Memberikan jarak spasi
-        st.markdown("---") # Garis pembatas
-        
-       # G. FOOTER / KONTAK (Untuk Recruiter)
         st.markdown("""
 <div style="text-align: center; padding: 20px;">
 <h4>Let's Connect! 🤝</h4>
