@@ -242,7 +242,12 @@ try:
             # Membuat Co-occurrence Matrix tanpa library mlxtend agar ringan
             basket = pd.crosstab(filtered_df['Pelanggan'], filtered_df['Nama Barang']).astype(bool).astype(int)
             co_matrix = basket.T.dot(basket)
-            np.fill_diagonal(co_matrix.values, 0)
+            
+            # --- PERBAIKAN ERROR BACA/TULIS (READ-ONLY) ---
+            matrix_vals = co_matrix.to_numpy(copy=True)
+            np.fill_diagonal(matrix_vals, 0)
+            co_matrix = pd.DataFrame(matrix_vals, index=co_matrix.index, columns=co_matrix.columns)
+            # ----------------------------------------------
             
             co_matrix.index.name = None
             co_matrix.columns.name = None
