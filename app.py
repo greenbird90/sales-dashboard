@@ -11,7 +11,7 @@ st.set_page_config(page_title="Sales Dashboard", page_icon="📈", layout="wide"
 # 2. Memuat Data & Pre-processing
 @st.cache_data
 def load_data():
-    df = pd.read_excel("Data_Dummy_Winod_10000_Row.xlsx")
+    df = pd.read_excel("Data_Dummy_10000_Row.xlsx")
     df['Date'] = pd.to_datetime(df['Date'])
     df['Bulan-Tahun'] = df['Date'].dt.to_period('M').astype(str)
     return df
