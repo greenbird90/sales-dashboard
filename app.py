@@ -159,7 +159,7 @@ try:
                 return df.to_csv(index=False).encode('utf-8')
 
             csv_data = convert_df(filtered_df)
-            st.download_button(label="Download Data Filtered (CSV)", data=csv_data, file_name='laporan_winod_filtered.csv', mime='text/csv')
+            st.download_button(label="Download Data Filtered (CSV)", data=csv_data, file_name='laporan_sales_filtered.csv', mime='text/csv')
 
         # ==========================================
         # ISI TAB 2: PREDIKSI (FORECASTING)
@@ -332,4 +332,4 @@ try:
         """, unsafe_allow_html=True)
             
 except FileNotFoundError:
-    st.error("File 'Data_Dummy_Winod_10000_Row.xlsx' tidak ditemukan.")
+    st.error("File 'Data_Dummy_10000_Row.xlsx' tidak ditemukan.")
