@@ -9,7 +9,6 @@ from statsmodels.tsa.holtwinters import ExponentialSmoothing
 st.set_page_config(page_title="Sales Dashboard", page_icon="📈", layout="wide", initial_sidebar_state="expanded")
 
 # 2. Memuat Data & Pre-processing
-# 2. Memuat Data & Pre-processing
 @st.cache_data
 def load_data():
     df = pd.read_excel("Data_Dummy_10000_Row.xlsx")
